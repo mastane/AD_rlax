@@ -216,6 +216,68 @@ def sarsa_lambda(
   return target_tm1 - qa_tm1
 
 
+def avar_q_learning(
+    dist_q_tm1: Array,
+    tau_q_tm1: Array,
+    a_tm1: Numeric,
+    r_t: Numeric,
+    discount_t: Numeric,
+    dist_q_t_selector: Array,
+    dist_q_t: Array,
+    stop_target_gradients: bool = True,
+) -> Numeric:
+  """Implements Q-learning for avar-valued Q distributions.
+
+  See "xxxx" by
+  Achab et al. (https://arxiv.org/abs/xxxx).
+
+  Args:
+    dist_q_tm1: Q distribution at time t-1.
+    tau_q_tm1: Q distribution probability thresholds.
+    a_tm1: action index at time t-1.
+    r_t: reward at time t.
+    discount_t: discount at time t.
+    dist_q_t_selector: Q distribution at time t for selecting greedy action in
+      target policy. This is separate from dist_q_t as in Double Q-Learning, but
+      can be computed with the target network and a separate set of samples.
+    dist_q_t: target Q distribution at time t.
+    stop_target_gradients: bool indicating whether or not to apply stop gradient
+      to targets.
+
+  Returns:
+    AD-Q-learning temporal difference error.
+  """
+  chex.assert_rank([
+      dist_q_tm1, tau_q_tm1, a_tm1, r_t, discount_t, dist_q_t_selector, dist_q_t
+  ], [2, 1, 0, 0, 0, 2, 2])
+  chex.assert_type([
+      dist_q_tm1, tau_q_tm1, a_tm1, r_t, discount_t, dist_q_t_selector, dist_q_t
+  ], [float, float, int, float, float, float, float])
+
+  # Only update the taken actions.
+  dist_qa_tm1 = dist_q_tm1[:, a_tm1]
+
+  # Select target action according to greedy policy w.r.t. dist_q_t_selector.
+  q_t_selector = jnp.mean(dist_q_t_selector, axis=0)
+  a_t = jnp.argmax(q_t_selector)
+  dist_qa_t = dist_q_t[:, a_t]
+
+  # ADDED BY MASTANE
+  target_tm1 = r_t + discount_t * jnp.mean(dist_qa_t)
+  # for alpha=1/(N+1) so that all N+1 stairs have same width
+  atoms_target_tm1 = jnp.sort( jnp.append(dist_qa_tm1, target_tm1) )
+  num_avars = dist_qa_tm1.shape[-1]
+  cumprobs = jnp.arange( num_avars + 2 ) / jnp.float32( num_avars + 1 )
+  # compute avars
+  dist_target = [ num_avars * jnp.sum( [ jnp.max(0.0, jnp.min( i/num_avars ,  j/(num_avars+1) ) - jnp.max( (i-1)/num_avars, (j-1)/(num_avars+1) ) ) * atoms_target_tm1[j-1] for j in range(1, num_avars+2) ] )  for i in range(1, num_avars+1) ]
+
+  # Compute target, do not backpropagate into it.
+  dist_target = jax.lax.select(stop_target_gradients,
+                               jax.lax.stop_gradient(dist_target), dist_target)
+
+  return dist_target - dist_qa_tm1
+
+
 def q_learning(
     q_tm1: Array,
     a_tm1: Numeric,
