@@ -267,9 +267,16 @@ def avar_q_learning(
   # for alpha=1/(N+1) so that all N+1 stairs have same width
   atoms_target_tm1 = jnp.sort( jnp.append(dist_qa_tm1, target_tm1) )
   num_avars = dist_qa_tm1.shape[-1]
-  cumprobs = jnp.arange( num_avars + 2 ) / jnp.float32( num_avars + 1 )
+  # avar intervals
+  i_window = jnp.arange( 1, num_avars + 1 ) / jnp.float32( num_avars )  # avar integration segments
+  j_window = jnp.arange( 1, num_avars + 2 ) / jnp.float32( num_avars + 1 )  # cumulative probabilities the of N+1 atoms
+  i_window = jnp.expand_dims( i_window, axis=1 )
+  j_window = jnp.expand_dims( j_window, axis=0 )
   # compute avars
-  dist_target = [ num_avars * jnp.sum( [ jnp.max(0.0, jnp.min( i/num_avars ,  j/(num_avars+1) ) - jnp.max( (i-1)/num_avars, (j-1)/(num_avars+1) ) ) * atoms_target_tm1[j-1] for j in range(1, num_avars+2) ] )  for i in range(1, num_avars+1) ]
+  minij = jnp.minimum( i_window, j_window )
+  maxij = jnp.maximum( i_window - 1.0/ jnp.float32( num_avars ) , j_window - 1.0/ jnp.float32( num_avars+1 ) )
+  lengths_inter = jnp.maximum( 0.0, minij - maxij )  # matrix of lengths of intersections of intervals [(i-1)/N, i/N] with [(j-1)/(N+1), j/(N+1)]
+  dist_target = jnp.float32( num_avars ) * jnp.dot(lengths_inter, atoms_target_tm1)
 
   # Compute target, do not backpropagate into it.
   dist_target = jax.lax.select(stop_target_gradients,
