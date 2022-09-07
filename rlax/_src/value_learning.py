@@ -218,7 +218,6 @@ def sarsa_lambda(
 
 def avar_q_learning(
     dist_q_tm1: Array,
-    tau_q_tm1: Array,
     a_tm1: Numeric,
     r_t: Numeric,
     discount_t: Numeric,
@@ -233,7 +232,6 @@ def avar_q_learning(
 
   Args:
     dist_q_tm1: Q distribution at time t-1.
-    tau_q_tm1: Q distribution probability thresholds.
     a_tm1: action index at time t-1.
     r_t: reward at time t.
     discount_t: discount at time t.
@@ -248,11 +246,11 @@ def avar_q_learning(
     AD-Q-learning temporal difference error.
   """
   chex.assert_rank([
-      dist_q_tm1, tau_q_tm1, a_tm1, r_t, discount_t, dist_q_t_selector, dist_q_t
-  ], [2, 1, 0, 0, 0, 2, 2])
+      dist_q_tm1, a_tm1, r_t, discount_t, dist_q_t_selector, dist_q_t
+  ], [2, 0, 0, 0, 2, 2])
   chex.assert_type([
-      dist_q_tm1, tau_q_tm1, a_tm1, r_t, discount_t, dist_q_t_selector, dist_q_t
-  ], [float, float, int, float, float, float, float])
+      dist_q_tm1, a_tm1, r_t, discount_t, dist_q_t_selector, dist_q_t
+  ], [float, int, float, float, float, float])
 
   # Only update the taken actions.
   dist_qa_tm1 = dist_q_tm1[:, a_tm1]
@@ -269,7 +267,7 @@ def avar_q_learning(
   num_avars = dist_qa_tm1.shape[-1]
   # avar intervals
   i_window = jnp.arange( 1, num_avars + 1 ) / jnp.float32( num_avars )  # avar integration segments
-  j_window = jnp.arange( 1, num_avars + 2 ) / jnp.float32( num_avars + 1 )  # cumulative probabilities the of N+1 atoms
+  j_window = jnp.arange( 1, num_avars + 2 ) / jnp.float32( num_avars + 1 )  # cumulative probabilities of the N+1 atoms
   i_window = jnp.expand_dims( i_window, axis=1 )
   j_window = jnp.expand_dims( j_window, axis=0 )
   # compute avars
