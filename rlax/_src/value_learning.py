@@ -223,6 +223,8 @@ def avar_q_learning(
     discount_t: Numeric,
     dist_q_t_selector: Array,
     dist_q_t: Array,
+    dist_q_t: Array,
+    dist_q_target_tm1: Array,
     stop_target_gradients: bool = True,
 ) -> Numeric:
   """Implements Q-learning for avar-valued Q distributions.
@@ -246,14 +248,15 @@ def avar_q_learning(
     AD-Q-learning temporal difference error.
   """
   chex.assert_rank([
-      dist_q_tm1, a_tm1, r_t, discount_t, dist_q_t_selector, dist_q_t
-  ], [2, 0, 0, 0, 2, 2])
+      dist_q_tm1, a_tm1, r_t, discount_t, dist_q_t_selector, dist_q_t, dist_q_target_tm1
+  ], [2, 0, 0, 0, 2, 2, 2])
   chex.assert_type([
-      dist_q_tm1, a_tm1, r_t, discount_t, dist_q_t_selector, dist_q_t
-  ], [float, int, float, float, float, float])
+      dist_q_tm1, a_tm1, r_t, discount_t, dist_q_t_selector, dist_q_t, dist_q_target_tm1
+  ], [float, int, float, float, float, float, float])
 
   # Only update the taken actions.
   dist_qa_tm1 = dist_q_tm1[:, a_tm1]
+  dist_qa_target_tm1 = dist_q_target_tm1[:, a_tm1]
 
   # Select target action according to greedy policy w.r.t. dist_q_t_selector.
   q_t_selector = jnp.mean(dist_q_t_selector, axis=0)
@@ -263,7 +266,7 @@ def avar_q_learning(
   # ADDED BY MASTANE
   target_tm1 = r_t + discount_t * jnp.mean(dist_qa_t)
   # for alpha=1/(N+1) so that all N+1 stairs have same width
-  atoms_target_tm1 = jnp.sort( jnp.append(dist_qa_tm1, target_tm1) )
+  atoms_target_tm1 = jnp.sort( jnp.append(dist_qa_target_tm1, target_tm1) )
   num_avars = dist_qa_tm1.shape[-1]
   # avar intervals
   i_window = jnp.arange( 1, num_avars + 1 ) / jnp.float32( num_avars )  # avar integration segments
