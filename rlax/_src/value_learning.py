@@ -223,7 +223,6 @@ def avar_q_learning(
     discount_t: Numeric,
     dist_q_t_selector: Array,
     dist_q_t: Array,
-    dist_q_t: Array,
     dist_q_target_tm1: Array,
     stop_target_gradients: bool = True,
 ) -> Numeric:
