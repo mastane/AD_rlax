@@ -224,6 +224,7 @@ def avar_q_learning(
     dist_q_t_selector: Array,
     dist_q_t: Array,
     dist_q_target_tm1: Array,
+    mixture_ratio: Numeric,
     stop_target_gradients: bool = True,
 ) -> Numeric:
   """Implements Q-learning for avar-valued Q distributions.
@@ -247,11 +248,11 @@ def avar_q_learning(
     AD-Q-learning temporal difference error.
   """
   chex.assert_rank([
-      dist_q_tm1, a_tm1, r_t, discount_t, dist_q_t_selector, dist_q_t, dist_q_target_tm1
-  ], [2, 0, 0, 0, 2, 2, 2])
+      dist_q_tm1, a_tm1, r_t, discount_t, dist_q_t_selector, dist_q_t, dist_q_target_tm1, mixture_ratio
+  ], [2, 0, 0, 0, 2, 2, 2, 0])
   chex.assert_type([
-      dist_q_tm1, a_tm1, r_t, discount_t, dist_q_t_selector, dist_q_t, dist_q_target_tm1
-  ], [float, int, float, float, float, float, float])
+      dist_q_tm1, a_tm1, r_t, discount_t, dist_q_t_selector, dist_q_t, dist_q_target_tm1, mixture_ratio
+  ], [float, int, float, float, float, float, float, float])
 
   # Only update the taken actions.
   dist_qa_tm1 = dist_q_tm1[:, a_tm1]
