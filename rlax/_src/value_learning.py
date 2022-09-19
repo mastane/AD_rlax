@@ -265,17 +265,24 @@ def avar_q_learning(
 
   # ADDED BY MASTANE
   target_tm1 = r_t + discount_t * jnp.mean(dist_qa_t)
-  # for alpha=1/(N+1) so that all N+1 stairs have same width
-  atoms_target_tm1 = jnp.sort( jnp.append(dist_qa_target_tm1, target_tm1) )
   num_avars = dist_qa_tm1.shape[-1]
+  # take argsort on atoms, then reorder atoms and probabilities
+  probas = ( (1.0 - mixture_ratio) / jnp.float32( num_avars ) ) * jnp.ones_like( dist_qa_target_tm1 , dtype='float32')
+  probas = jnp.append(probas, mixture_ratio)
+  atoms_target_tm1 = jnp.append(dist_qa_target_tm1, target_tm1)
+  sigma = jnp.argsort( atoms_target_tm1 )
+  atoms_target_tm1 = atoms_target_tm1[sigma]
+  probas = probas[sigma]
   # avar intervals
   i_window = jnp.arange( 1, num_avars + 1 ) / jnp.float32( num_avars )  # avar integration segments
-  j_window = jnp.arange( 1, num_avars + 2 ) / jnp.float32( num_avars + 1 )  # cumulative probabilities of the N+1 atoms
+  j_right = jnp.cumsum(probas)  # cumulative probabilities of the N+1 atoms
+  j_left = j_right - probas
   i_window = jnp.expand_dims( i_window, axis=1 )
-  j_window = jnp.expand_dims( j_window, axis=0 )
+  j_right = jnp.expand_dims( j_right, axis=0 )
+  j_left = jnp.expand_dims( j_left, axis=0 )
   # compute avars
-  minij = jnp.minimum( i_window, j_window )
-  maxij = jnp.maximum( i_window - 1.0/ jnp.float32( num_avars ) , j_window - 1.0/ jnp.float32( num_avars+1 ) )
+  minij = jnp.minimum( i_window, j_right )
+  maxij = jnp.maximum( i_window - 1.0/ jnp.float32( num_avars ) , j_left )
   lengths_inter = jnp.maximum( 0.0, minij - maxij )  # matrix of lengths of intersections of intervals [(i-1)/N, i/N] with [(j-1)/(N+1), j/(N+1)]
   dist_target = jnp.float32( num_avars ) * jnp.dot(lengths_inter, atoms_target_tm1)
 
